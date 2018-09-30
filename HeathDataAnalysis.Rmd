@@ -1,7 +1,7 @@
 ---
-title: "CDC Health data Analysis"
-author: "Minxin Lu"
-date: "9/29/2018"
+title: "CDC Health Data Analysis"
+author: "Weifang Liu, Minxin Lu, Wancen Mu"
+date: "9/30/2018"
 output:
   html_document: default
 ---
@@ -79,11 +79,12 @@ Cities_BPHIGH <-
   group_by(CityName) %>%
   summarise(datavalue_mean = weighted.mean(Data_Value,PopulationCount,na.rm=TRUE),
             lat_mean = mean(lat,na.rm=TRUE),
-            lon_mean = mean(lon,na.rm=TRUE))
+            lon_mean = mean(lon,na.rm=TRUE)) 
 
 BPHIGH <- Cities_BPHIGH
 BPHIGH$q <- with(BPHIGH, cut(datavalue_mean, quantile(datavalue_mean, na.rm = T)))
-levels(BPHIGH$q) <- c("rarely", "slightly", "moderatly", "severely") #rarely =1st quantile, slightly = 2nd quantile, moderatly= 3rd quantile, severely = 4th quantile
+
+levels(BPHIGH$q) <- c("(21.8, 26.9)", "(26.9, 29.7)", "(29.7, 33.1)", "(33.1, 46.3)") #rarely =1st quantile, slightly = 2nd quantile, moderatly= 3rd quantile, severely = 4th quantile
 BPHIGH$q <- as.ordered(BPHIGH$q)
 
 g <- list(
@@ -253,6 +254,7 @@ NCHS_mortality_plot
 We find both heart disease and cancer decrease obviously. The details can be find in [here](https://www.cdc.gov/pcd/issues/2016/16_0211.htm) which can be predicted that if current trends continue, cancer will become the leading cause of death by 2020.
 
 `Age-adjusted Death Rate` Animated map for Cancer
+https://github.com/SnowMinxin12/404/blob/master/Cancer_death_rate_US_overtime.mov
 
 ```{r echo=FALSE, warning = FALSE}
 #`Age-adjusted Death Rate` Animated map for Cancer
@@ -275,7 +277,7 @@ We find both heart disease and cancer decrease obviously. The details can be fin
 ```
 
 `Age-adjusted Death Rate` Animated map for Heart disease
-
+https://github.com/SnowMinxin12/404/blob/master/heart_disease_death_rate_US_overtime.mov
 ```{r echo=FALSE, warning = FALSE}
 # #`Age-adjusted Death Rate` Animated map for Heart disease
 
