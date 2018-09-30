@@ -289,7 +289,9 @@ We find both heart disease and cancer decrease obviously. The details can be fin
 ```
 
 `Age-adjusted Death Rate` Animated map for Alzheimer's disease:
-![Caption](vid/video1.mp4)
+https://github.com/SnowMinxin12/404/blob/master/AD_death_rate_US_overtime.mov
+
+
 Deaths from Alzheimer's disease are on the rise in the United States. Simiarly found in CDC (Centers for Disease Control and Prevention) [Deaths from Alzheimer's Increase 50 Percent](https://www.livescience.com/59261-alzheimers-deaths-increase.html)
 ```{r echo=FALSE, warning = FALSE}
 # #`Age-adjusted Death Rate` Animated map for Alzheimer's disease
