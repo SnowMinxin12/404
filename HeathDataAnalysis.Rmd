@@ -4,6 +4,7 @@ author: "Weifang Liu, Minxin Lu, Wancen Mu"
 date: "9/30/2018"
 output:
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -236,7 +237,7 @@ NCHS_mortality_plot<-
          , showlegend = T
          , xaxis = list(title = "")
          , yaxis = list(title = "")
-         ,legend = list(x = 0.1, y = 0.9)
+         ,legend = FALSE
          ,hovermode = 'compare')%>%
   animation_opts(
     frame = 200, 
