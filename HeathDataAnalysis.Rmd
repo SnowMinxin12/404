@@ -1,0 +1,307 @@
+---
+title: "CDC Health data Analysis"
+author: "Minxin Lu"
+date: "9/29/2018"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+setwd("~/Desktop/healthdata")
+library(tidyverse)
+library(plotly)
+library(data.table)
+library(knitr)
+library(rMaps)
+library(webshot)
+library(orca)
+library(processx)
+library(mapplots)
+library(stats)
+require(devtools)
+install_github('ramnathv/rCharts@dev')
+install_github('ramnathv/rMaps')
+Cities <- read_csv("500_Cities__Local_Data_for_Better_Health__2017_release.csv")
+NCHS <- read_csv("NCHS_-_Leading_Causes_of_Death__United_States.csv")
+US <- read_csv("U.S._Chronic_Disease_Indicators__CDI_.csv")
+Cities_tb <-as.tibble(Cities)
+NCHS_tb <-as.tibble(NCHS)
+US_tb <- as.tibble(US)
+# View(Cities_tb)
+# View(NCHS_tb) 
+# View(US_tb)
+```
+
+
+```{r echo=FALSE, warning = FALSE}
+# Cities_tb %>%
+#   count(CityName, CityFIPS) %>% 
+#   filter(n > 1)
+# Cities_tb %>%
+#   count(CityName,CityFIPS,TractFIPS,GeoLocation) %>% 
+#   filter(n > 1)
+# Cities_tb %>%
+#   group_by(CityName,CityFIPS,TractFIPS,GeoLocation) %>% 
+#   summarize(n())
+```
+
+```{r echo=FALSE, warning = FALSE}
+Cities_NAremoved <-
+  Cities_tb%>%
+  filter(!is.na(GeoLocation)) 
+Cities_latlon_chr<-  
+  Cities_NAremoved %>%
+  separate(GeoLocation, c("lat_chr", "lon_chr"), sep = ",", remove = FALSE,
+  convert = FALSE, extra = "warn", fill = "warn")
+Cities_geo <-
+  Cities_latlon_chr %>%
+  mutate(lat = as.numeric(gsub("(","",Cities_latlon_chr$lat_chr,fixed = TRUE))) %>%
+  mutate(lon = as.numeric(gsub(")","",Cities_latlon_chr$lon_chr,fixed = TRUE)))
+
+```
+
+```{r echo= FALSE, warning = FALSE}
+# #first measure: Current lack of health insurance among adults aged 18–64 years in
+
+# 
+# ggplot(data=Cities_M1,aes(lon_mean, lat_mean,color=factor(cut_number(datavalue_mean,5)))) +
+#     borders("state") +
+#     geom_point() +
+#     coord_quickmap()+
+#     xlim(c(-130,-65))+ylim(c(23,53))+
+#     scale_color_brewer(palette="Blues")
+```
+
+```{r echo= FALSE, warning = FALSE}
+Cities_BPHIGH <-
+  Cities_geo[Cities_geo$MeasureId=="BPHIGH", ] %>%
+  filter(DataValueTypeID == "AgeAdjPrv") %>%
+  group_by(CityName) %>%
+  summarise(datavalue_mean = weighted.mean(Data_Value,PopulationCount,na.rm=TRUE),
+            lat_mean = mean(lat,na.rm=TRUE),
+            lon_mean = mean(lon,na.rm=TRUE))
+
+BPHIGH <- Cities_BPHIGH
+BPHIGH$q <- with(BPHIGH, cut(datavalue_mean, quantile(datavalue_mean, na.rm = T)))
+levels(BPHIGH$q) <- c("rarely", "slightly", "moderatly", "severely") #rarely =1st quantile, slightly = 2nd quantile, moderatly= 3rd quantile, severely = 4th quantile
+BPHIGH$q <- as.ordered(BPHIGH$q)
+
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showland = TRUE,
+  landcolor = toRGB("gray85"),
+  subunitwidth = 1,
+  countrywidth = 1,
+  subunitcolor = toRGB("white"),
+  countrycolor = toRGB("white")
+)
+
+p_BPHIGH<- plot_geo(BPHIGH, locationmode = 'USA-states', sizes = c(1, 250)) %>%
+  add_markers(
+    x = ~lon_mean, y = ~lat_mean, size = ~datavalue_mean, color = ~q, hoverinfo = "text",
+    text = ~paste(BPHIGH$CityName, "<br />", datavalue_mean)
+  ) %>%
+  layout(title = "High blood pressure among adults aged >=18 Years", geo = g)
+p_BPHIGH
+
+```
+
+We could easily find that High rates of high blood pressure persist in US Southeast, almost 75 quantiles are in southeast, while regional differences could be exist in dietary intake of potassium, magnesium, and protein, which have been implicated as factors in hypertension. In addition, environmental toxins such as lead and cadmium may contribute to geographic differences in hypertension levels in some rural areas. [More details](https://www.webmd.com/hypertension-high-blood-pressure/news/20000106/high-blood-pressure-more-prevalent-in-south#1)
+
+```{r echo = FALSE, warning = FALSE}
+# Cities_BPMED <-
+#   Cities_geo[Cities_geo$MeasureId=="BPMED", ] %>%
+#   filter(DataValueTypeID == "AgeAdjPrv") %>%
+#   group_by(CityName) %>%
+#   summarise(datavalue_mean = weighted.mean(Data_Value,PopulationCount,na.rm=TRUE),
+#             lat_mean = mean(lat,na.rm=TRUE),
+#             lon_mean = mean(lon,na.rm=TRUE))
+# BPMED <- Cities_BPMED
+# BPMED$q <- with(BPMED, cut(datavalue_mean, quantile(datavalue_mean, na.rm = T)))
+# levels(BPMED$q) <- c("rarely", "slightly", "moderatly", "severely")#rarely =1st quantile, slightly = 2nd quantile, moderatly= 3rd quantile, severely = 4th quantile
+# BPMED$q <- as.ordered(BPMED$q)
+# 
+# g <- list(
+#   scope = 'usa',
+#   projection = list(type = 'albers usa'),
+#   showland = TRUE,
+#   landcolor = toRGB("gray85"),
+#   subunitwidth = 1,
+#   countrywidth = 1,
+#   subunitcolor = toRGB("white"),
+#   countrycolor = toRGB("white")
+# )
+# 
+# p_BPMED<- plot_geo(BPMED, locationmode = 'USA-states', sizes = c(1, 250)) %>%
+#   add_markers(
+#     x = ~lon_mean, y = ~lat_mean, size = ~datavalue_mean, color = ~q, hoverinfo = "text",
+#     text = ~paste(BPMED$CityName, "<br />", df$datavalue_mean)
+#   ) %>%
+#   layout(title = "Taking medicine for high blood pressure control among adults aged >=18 Years with high blood pressure", geo = g)
+# p_BPMED
+```
+
+
+```{r echo=FALSE, warning = FALSE}
+# Cities_latlon %>%
+#   group_by(CityName, Measure)
+#   summarize 
+# popcount<-
+#   ggplot(Cities_latlon,aes(lon, lat, colour = PopulationCount)) +
+#     scale_fill_viridis()+
+#     borders("state") +
+#     geom_point() +
+#     coord_quickmap()
+# 
+# # ggplotly(popcount)
+
+```
+
+######### NCHS #########
+```{r echo=FALSE, warning = FALSE}
+NCHS_spesific_cause <-
+ NCHS_tb%>%
+ filter(`Cause Name`!="All causes")
+
+# NCHS_tb%>%
+#  filter(`Cause Name`!="All causes") %>%
+#  group_by(`Cause Name`) %>%
+#  summarise(totaldeath = sum(Deaths),
+#  mean_death_rate = mean(`Age-adjusted Death Rate`))
+```
+
+
+
+Animated History of mortality
+
+```{r echo=FALSE, warning = FALSE}
+
+#population from Census Bureau:
+#https://www2.census.gov/programs-surveys/popest/tables/2010-2017/state/totals/nst-est2017-01.xlsx
+#https://www2.census.gov/programs-surveys/popest/datasets/2000-2010/intercensal/state/st-est00int-race.csv
+#https://www2.census.gov/programs-surveys/popest/datasets/1990-2000/intercensal/national/us-est90int-07-1999.csv
+pop_byyear <-tribble(
+  ~Year, ~pop,
+  1999, 277533535,
+  2000, 282162411,
+  2001, 284968955,
+  2002, 287625193,
+  2003, 290107933,
+  2004, 292805298,
+  2005, 295516599,
+  2006, 298379912,
+  2007, 301231207,
+  2008, 304093966,
+  2009, 306771529,
+  2010, 309338421,
+  2011, 311644280,
+  2012, 313993272,
+  2013, 316234505,
+  2014, 318622525,
+  2015, 321039839,
+  2016, 323405935
+)
+#percent
+NCHS_mortality <-
+NCHS_spesific_cause%>%
+  filter(State =="United States") %>%
+  select(Year, `Cause Name`,Deaths) %>%
+  left_join(pop_byyear, by = "Year") %>%
+  mutate(mortality = Deaths/pop*100)
+
+accumulate_by <- function(dat, var) {
+  var <- lazyeval::f_eval(var, dat)
+  lvls <- plotly:::getLevels(var)
+  dats <- lapply(seq_along(lvls), function(x) {
+    cbind(dat[var %in% lvls[seq(1, x)], ], frame = lvls[[x]])
+  })
+  dplyr::bind_rows(dats)
+}
+
+NCHS_mortality <- NCHS_mortality %>% accumulate_by(~Year)
+
+NCHS_mortality_plot<-
+ plot_ly(data = NCHS_mortality
+        ,type = 'scatter'
+        ,mode = 'lines'
+        ,line = list(simplyfy = F)
+        ,x = ~Year
+        ,y = ~mortality
+        ,color = ~`Cause Name`
+        ,frame = ~frame
+        ,alpha = 0.9) %>% 
+  layout(title = "Animated History of mortality"
+         , showlegend = T
+         , xaxis = list(title = "")
+         , yaxis = list(title = "")
+         ,legend = list(x = 0.1, y = 0.9)
+         ,hovermode = 'compare')%>%
+  animation_opts(
+    frame = 200, 
+    transition = 0, 
+    redraw = FALSE
+  ) %>%
+  animation_slider(
+    hide = F
+    ) %>%
+  animation_button(
+    x = 1, xanchor = "right", y = 0, yanchor = "bottom"
+  )
+NCHS_mortality_plot
+```
+We find both heart disease and cancer decrease obviously. The details can be find in [here](https://www.cdc.gov/pcd/issues/2016/16_0211.htm) which can be predicted that if current trends continue, cancer will become the leading cause of death by 2020.
+
+`Age-adjusted Death Rate` Animated map for Cancer
+
+```{r echo=FALSE, warning = FALSE}
+#`Age-adjusted Death Rate` Animated map for Cancer
+
+# options(stringsAsFactors = F)
+# cancer <- filter(NCHS_tb, `Cause Name` == "Cancer") %>%
+#   mutate(abbre = setNames(state.abb, state.name)[State])
+# 
+# cancer_p<- ichoropleth(`Age-adjusted Death Rate` ~ abbre,
+#             data = cancer,
+#             animate = "Year",
+#             play = T)
+# cancer_p
+
+# require(orca)
+# cancer_p <- cancer_p %>% add_surface()
+# show(cancer_p)
+# cancer_p <- plotly_build(cancer_p)
+# orca(cancer_p, "Animated map for Cancer.png")
+```
+
+`Age-adjusted Death Rate` Animated map for Heart disease
+
+```{r echo=FALSE, warning = FALSE}
+# #`Age-adjusted Death Rate` Animated map for Heart disease
+
+# heartdisease <- filter(NCHS_tb, `Cause Name` == "Heart disease") %>%
+#   mutate(abbre = setNames(state.abb, state.name)[State])
+# 
+# ichoropleth(`Age-adjusted Death Rate` ~ abbre,
+#             data = heartdisease,
+#             animate = "Year",
+#             play = T)
+```
+
+`Age-adjusted Death Rate` Animated map for Alzheimer's disease:
+![Caption](vid/video1.mp4)
+Deaths from Alzheimer's disease are on the rise in the United States. Simiarly found in CDC (Centers for Disease Control and Prevention) [Deaths from Alzheimer's Increase 50 Percent](https://www.livescience.com/59261-alzheimers-deaths-increase.html)
+```{r echo=FALSE, warning = FALSE}
+# #`Age-adjusted Death Rate` Animated map for Alzheimer's disease
+# 
+# AD <- filter(NCHS_tb, `Cause Name` == "Alzheimer's disease") %>%
+#   mutate(abbre = setNames(state.abb, state.name)[State])
+# 
+# 
+# ichoropleth(`Age-adjusted Death Rate` ~ abbre,
+#             data = AD,
+#             animate = "Year",
+#             play=T)
+```
+
+
